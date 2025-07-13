@@ -19,6 +19,8 @@ region = st.text_input("Enter Region (e.g., 'Dresden, Sachsen, Germany')", value
 buffer_distance = st.slider("Water Buffer Distance (meters) for Risk Assessment", 10, 200, 50)
 fetch_data = st.button("Fetch and Analyze Data")
 
+filtered_gdf = pd.DataFrame()
+
 if fetch_data:
     try:
         st.write("Fetching roads and water bodies...")
@@ -28,7 +30,7 @@ if fetch_data:
         roads_gdf = ox.graph_to_gdfs(graph, nodes=False, edges=True)
         roads_gdf = roads_gdf.to_crs("EPSG:4326")
         roads_gdf["length_m"] = roads_gdf.length * 111320  # Approx meters
-        roads_gdf["fclass"] = roads_gdf["highway"]
+roads_gdf["fclass"] = roads_gdf["highway"]
         
         # Fetch water bodies
         water_tags = {"natural": "water", "waterway": True}
@@ -58,9 +60,6 @@ if fetch_data:
     except Exception as e:
         st.error(f"Error fetching/processing data: {e}")
         logger.error(e)
-
-else:
-    filtered_gdf = pd.DataFrame()
 
 # Filters
 if not filtered_gdf.empty:
