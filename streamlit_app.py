@@ -32,7 +32,7 @@ if fetch_data:
         roads_gdf["length_m"] = roads_gdf.length * 111320  # Approx meters
         roads_gdf["fclass"] = roads_gdf["highway"]
         
-        # Fetch water bodies (updated method)
+        # Fetch water bodies
         water_tags = {"natural": "water", "waterway": True}
         water_gdf = ox.features_from_place(region, tags=water_tags)
         water_gdf = water_gdf.to_crs("EPSG:4326")
@@ -64,6 +64,9 @@ if fetch_data:
 # Filters
 if not filtered_gdf.empty:
     st.sidebar.header("Filter Options")
+    # Handle list types in fclass (common in OSM)
+    if filtered_gdf["fclass"].dtype == 'object':
+        filtered_gdf["fclass"] = filtered_gdf["fclass"].apply(lambda x: x[0] if isinstance(x, list) else x)
     fclass_filter = st.sidebar.multiselect("Select Road Types", options=filtered_gdf["fclass"].unique(), default=filtered_gdf["fclass"].unique())
     risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), default=filtered_gdf["predicted_risk"].unique())
     
