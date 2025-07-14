@@ -30,7 +30,7 @@ if fetch_data:
         roads_gdf = ox.graph_to_gdfs(graph, nodes=False, edges=True)
         roads_gdf = roads_gdf.to_crs("EPSG:4326")
         roads_gdf["length_m"] = roads_gdf.length * 111320  # Approx meters
-roads_gdf["fclass"] = roads_gdf["highway"]
+        roads_gdf["fclass"] = roads_gdf["highway"]
         
         # Fetch water bodies
         water_tags = {"natural": "water", "waterway": True}
@@ -92,7 +92,7 @@ if not filtered_gdf.empty:
         st_folium(m, width=700, height=500)
 
 # Fallback for custom data - Use local files if available
-st.sidebar.header("Use Local Data (Optional)")
+st.sidebar.header("Use Local Data (Optional")
 use_local = st.sidebar.checkbox("Load from local CSV and Shapefile", value=False)
 if use_local:
     try:
