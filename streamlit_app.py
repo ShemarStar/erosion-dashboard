@@ -97,7 +97,7 @@ use_local = st.sidebar.checkbox("Load from local CSV and Shapefile", value=False
 if use_local:
     try:
         df = pd.read_csv("erosion_predictions.csv")
-        gdf = gpd.read_file("sachsen_roads_near_water_deduped.shp")
+        gdf = gpd.read_file("sachsen_roads_near_water_deduped_fixed.shp")
         gdf["osm_id"] = gdf["osm_id"].astype("int64")
         df["osm_id"] = df["osm_id"].astype("int64")
         gdf = gdf.merge(df[["osm_id", "predicted_risk"]], on="osm_id", how="left")
