@@ -19,7 +19,9 @@ region = st.text_input("Enter Region (e.g., 'Dresden, Sachsen, Germany')", value
 buffer_distance = st.slider("Water Buffer Distance (meters) for Risk Assessment", 10, 200, 50)
 fetch_data = st.button("Fetch and Analyze Data")
 
-filtered_gdf = pd.DataFrame()
+# Persist data in session state
+if 'filtered_gdf' not in st.session_state:
+    st.session_state.filtered_gdf = pd.DataFrame()
 
 if fetch_data:
     try:
@@ -28,17 +30,17 @@ if fetch_data:
         # Fetch road network
         graph = ox.graph_from_place(region, network_type="all")
         roads_gdf = ox.graph_to_gdfs(graph, nodes=False, edges=True)
-        roads_gdf = roads_gdf.to_crs("EPSG:4326")
-        roads_gdf["length_m"] = roads_gdf.length * 111320  # Approx meters
+        roads_gdf = roads_gdf.to_crs("EPSG:32633")  # Projected CRS for Sachsen
+        roads_gdf["length_m"] = roads_gdf.length
         roads_gdf["fclass"] = roads_gdf["highway"]
         
         # Fetch water bodies
         water_tags = {"natural": "water", "waterway": True}
         water_gdf = ox.features_from_place(region, tags=water_tags)
-        water_gdf = water_gdf.to_crs("EPSG:4326")
+        water_gdf = water_gdf.to_crs("EPSG:32633")
         
         # Buffer water
-        water_buffer = water_gdf.buffer(buffer_distance / 111320)
+        water_buffer = water_gdf.buffer(buffer_distance)
         
         # Find roads near water
         roads_near_water = gpd.sjoin(roads_gdf, gpd.GeoDataFrame(geometry=water_buffer), how="inner", predicate="intersects")
@@ -54,12 +56,15 @@ if fetch_data:
         roads_near_water["predicted_risk"] = roads_near_water.apply(calculate_risk, axis=1)
         
         # Limit to 1000
-        filtered_gdf = roads_near_water.head(1000)
-        st.write(f"Analyzed {len(filtered_gdf)} roads near water.")
+        st.session_state.filtered_gdf = roads_near_water.head(1000)
+        st.write(f"Analyzed {len(st.session_state.filtered_gdf)} roads near water.")
         
     except Exception as e:
         st.error(f"Error fetching/processing data: {e}")
         logger.error(e)
+
+# Use persisted data
+filtered_gdf = st.session_state.filtered_gdf
 
 # Filters
 if not filtered_gdf.empty:
@@ -72,6 +77,8 @@ if not filtered_gdf.empty:
     filtered_gdf = filtered_gdf[filtered_gdf["fclass"].isin(fclass_filter) & filtered_gdf["predicted_risk"].isin(risk_filter)]
     
     st.subheader("Filtered Roads Table")
+    # Flatten osm_id if list
+    filtered_gdf["osmid"] = filtered_gdf["osmid"].apply(lambda x: x[0] if isinstance(x, list) else x)
     display_df = filtered_gdf[["osmid", "fclass", "length_m", "predicted_risk"]].rename(columns={"osmid": "osm_id"})
     st.dataframe(display_df)
     
@@ -79,9 +86,10 @@ if not filtered_gdf.empty:
     csv = display_df.to_csv(index=False).encode("utf-8")
     st.download_button("Download Filtered Data", csv, "filtered_roads.csv", "text/csv")
     
-    # Map
+    # Map (reproject to EPSG:4326 for Folium)
+    filtered_gdf_map = filtered_gdf.to_crs("EPSG:4326")
     st.subheader("Map of Roads Near Water (Colored by Risk)")
-    if not filtered_gdf.empty:
+    if not filtered_gdf_map.empty:
         m = folium.Map(location=[51.053, 13.738], zoom_start=12)
         
         def style_function(feature):
@@ -89,7 +97,8 @@ if not filtered_gdf.empty:
             color = "red" if risk == "High" else "green"
             return {"color": color, "weight": 2}
         
-        folium.GeoJson(filtered_gdf.to_json(), style_function=style_function, tooltip=folium.GeoJsonTooltip(fields=["fclass", "predicted_risk", "length_m"])).add_to(m)
+        folium.GeoJson(filtered_gdf_map.to_json(), style_function=style_function, tooltip=folium.GeoJsonTooltip(fields=["fclass", "predicted_risk", 
+"length_m"])).add_to(m)
         
         st_folium(m, width=700, height=500)
 
@@ -104,7 +113,7 @@ if use_local:
         df["osm_id"] = df["osm_id"].astype("int64")
         gdf = gdf.merge(df[["osm_id", "predicted_risk"]], on="osm_id", how="left")
         gdf["predicted_risk"] = gdf["predicted_risk"].fillna("Unknown")
-        filtered_gdf = gdf.head(1000)
+        st.session_state.filtered_gdf = gdf.head(1000)
         st.write("Loaded local data successfully.")
     except Exception as e:
         st.error(f"Error loading local data: {e}")
