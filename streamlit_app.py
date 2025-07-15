@@ -64,6 +64,8 @@ if fetch_data:
 # Filters
 if not filtered_gdf.empty:
     st.sidebar.header("Filter Options")
+    # Flatten lists in fclass to fix unhashable error
+    filtered_gdf["fclass"] = filtered_gdf["fclass"].apply(lambda x: x[0] if isinstance(x, list) else x)
     fclass_filter = st.sidebar.multiselect("Select Road Types", options=filtered_gdf["fclass"].unique(), default=filtered_gdf["fclass"].unique())
     risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), default=filtered_gdf["predicted_risk"].unique())
     
@@ -78,7 +80,7 @@ if not filtered_gdf.empty:
     st.download_button("Download Filtered Data", csv, "filtered_roads.csv", "text/csv")
     
     # Map
-    st.subheader("Map of Roads Near Water (Colored by Risk")
+    st.subheader("Map of Roads Near Water (Colored by Risk)")
     if not filtered_gdf.empty:
         m = folium.Map(location=[51.053, 13.738], zoom_start=12)
         
