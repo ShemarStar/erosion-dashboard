@@ -55,8 +55,8 @@ if fetch_data:
         
         roads_near_water["predicted_risk"] = roads_near_water.apply(calculate_risk, axis=1)
         
-        # Limit to 1000
-        st.session_state.filtered_gdf = roads_near_water.head(1000)
+        # Limit to 1000 and reset index to make osmid a column
+        st.session_state.filtered_gdf = roads_near_water.head(1000).reset_index()
         st.write(f"Analyzed {len(st.session_state.filtered_gdf)} roads near water.")
         
     except Exception as e:
@@ -77,10 +77,9 @@ if not filtered_gdf.empty:
     filtered_gdf = filtered_gdf[filtered_gdf["fclass"].isin(fclass_filter) & filtered_gdf["predicted_risk"].isin(risk_filter)]
     
     st.subheader("Filtered Roads Table")
-    # Reset index to make osmid a column (OSMnx uses multi-index u/v/key for edges)
-    filtered_gdf = filtered_gdf.reset_index()
-    # Use 'u' as osm_id (adjust based on columns; use print(filtered_gdf.columns) locally to check)
-    display_df = filtered_gdf[["u", "fclass", "length_m", "predicted_risk"]].rename(columns={"u": "osm_id"})
+    # Use 'osmid' or fallback to 'key' if 'osmid' missing
+    id_col = 'osmid' if 'osmid' in filtered_gdf.columns else 'key'
+    display_df = filtered_gdf[[id_col, "fclass", "length_m", "predicted_risk"]].rename(columns={id_col: "osm_id"})
     st.dataframe(display_df)
     
     # Download
