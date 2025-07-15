@@ -69,7 +69,7 @@ filtered_gdf = st.session_state.filtered_gdf
 # Filters
 if not filtered_gdf.empty:
     st.sidebar.header("Filter Options")
-    # Flatten lists in fclass
+    # Flatten lists in fclass to fix unhashable error
     filtered_gdf["fclass"] = filtered_gdf["fclass"].apply(lambda x: x[0] if isinstance(x, list) else x)
     fclass_filter = st.sidebar.multiselect("Select Road Types", options=filtered_gdf["fclass"].unique(), default=filtered_gdf["fclass"].unique())
     risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), default=filtered_gdf["predicted_risk"].unique())
@@ -79,7 +79,8 @@ if not filtered_gdf.empty:
     st.subheader("Filtered Roads Table")
     # Reset index to make osmid a column (OSMnx uses multi-index u/v/key for edges)
     filtered_gdf = filtered_gdf.reset_index()
-    display_df = filtered_gdf[["u", "fclass", "length_m", "predicted_risk"]].rename(columns={"u": "osm_id"})  # Use 'u' or 'key' as ID if 'osmid' missing
+    # Use 'u' as osm_id (adjust based on columns; use print(filtered_gdf.columns) locally to check)
+    display_df = filtered_gdf[["u", "fclass", "length_m", "predicted_risk"]].rename(columns={"u": "osm_id"})
     st.dataframe(display_df)
     
     # Download
