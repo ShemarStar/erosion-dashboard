@@ -1,4 +1,4 @@
-import streamlit as st
+kimport streamlit as st
 import osmnx as ox
 import geopandas as gpd
 import folium
@@ -12,15 +12,14 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 st.title("Dynamic Erosion Control Monitoring Dashboard")
-st.write("Identify high-risk roads near water bodies for construction compliance in Sachsen, Germany (or any region). Data fetched live from 
-OpenStreetMap.")
+st.write("Identify high-risk roads near water bodies for construction compliance in Sachsen, Germany (or any region). Data fetched live from OpenStreetMap.")
 
 # User inputs
 region = st.text_input("Enter Region (e.g., 'Dresden, Sachsen, Germany')", value="Dresden, Sachsen, Germany")
 buffer_distance = st.slider("Water Buffer Distance (meters) for Risk Assessment", 10, 200, 50)
 fetch_data = st.button("Fetch and Analyze Data")
 
-# Persist data in session state
+# Persist data in session state to prevent disappearing on reruns
 if 'filtered_gdf' not in st.session_state:
     st.session_state.filtered_gdf = pd.DataFrame()
 
@@ -70,10 +69,10 @@ filtered_gdf = st.session_state.filtered_gdf
 # Filters
 if not filtered_gdf.empty:
     st.sidebar.header("Filter Options")
-    fclass_filter = st.sidebar.multiselect("Select Road Types", options=filtered_gdf["fclass"].unique(), 
-default=filtered_gdf["fclass"].unique())
-    risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), 
-default=filtered_gdf["predicted_risk"].unique())
+    # Flatten lists in fclass to fix unhashable error
+    filtered_gdf["fclass"] = filtered_gdf["fclass"].apply(lambda x: x[0] if isinstance(x, list) else x)
+    fclass_filter = st.sidebar.multiselect("Select Road Types", options=filtered_gdf["fclass"].unique(), default=filtered_gdf["fclass"].unique())
+    risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), default=filtered_gdf["predicted_risk"].unique())
     
     filtered_gdf = filtered_gdf[filtered_gdf["fclass"].isin(fclass_filter) & filtered_gdf["predicted_risk"].isin(risk_filter)]
     
@@ -86,7 +85,7 @@ default=filtered_gdf["predicted_risk"].unique())
     st.download_button("Download Filtered Data", csv, "filtered_roads.csv", "text/csv")
     
     # Map
-    st.subheader("Map of Roads Near Water (Colored by Risk")
+    st.subheader("Map of Roads Near Water (Colored by Risk)")
     if not filtered_gdf.empty:
         m = folium.Map(location=[51.053, 13.738], zoom_start=12)
         
@@ -95,8 +94,7 @@ default=filtered_gdf["predicted_risk"].unique())
             color = "red" if risk == "High" else "green"
             return {"color": color, "weight": 2}
         
-        folium.GeoJson(filtered_gdf.to_json(), style_function=style_function, tooltip=folium.GeoJsonTooltip(fields=["fclass", "predicted_risk", 
-"length_m"])).add_to(m)
+        folium.GeoJson(filtered_gdf.to_json(), style_function=style_function, tooltip=folium.GeoJsonTooltip(fields=["fclass", "predicted_risk", "length_m"])).add_to(m)
         
         st_folium(m, width=700, height=500)
 
