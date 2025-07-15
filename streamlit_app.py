@@ -12,7 +12,8 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 st.title("Dynamic Erosion Control Monitoring Dashboard")
-st.write("Identify high-risk roads near water bodies for construction compliance in Sachsen, Germany (or any region). Data fetched live from OpenStreetMap.")
+st.write("Identify high-risk roads near water bodies for construction compliance in Sachsen, Germany (or any region). Data fetched live from 
+OpenStreetMap.")
 
 # User inputs
 region = st.text_input("Enter Region (e.g., 'Dresden, Sachsen, Germany')", value="Dresden, Sachsen, Germany")
@@ -55,8 +56,8 @@ if fetch_data:
         
         roads_near_water["predicted_risk"] = roads_near_water.apply(calculate_risk, axis=1)
         
-        # Limit to 1000 and reset index to make osmid a column
-        st.session_state.filtered_gdf = roads_near_water.head(1000).reset_index()
+        # Limit to 1000
+        st.session_state.filtered_gdf = roads_near_water.head(1000)
         st.write(f"Analyzed {len(st.session_state.filtered_gdf)} roads near water.")
         
     except Exception as e:
@@ -72,14 +73,16 @@ if not filtered_gdf.empty:
     # Flatten lists in fclass to fix unhashable error
     filtered_gdf["fclass"] = filtered_gdf["fclass"].apply(lambda x: x[0] if isinstance(x, list) else x)
     fclass_filter = st.sidebar.multiselect("Select Road Types", options=filtered_gdf["fclass"].unique(), default=filtered_gdf["fclass"].unique())
-    risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), default=filtered_gdf["predicted_risk"].unique())
+    risk_filter = st.sidebar.multiselect("Select Risk Levels", options=filtered_gdf["predicted_risk"].unique(), 
+default=filtered_gdf["predicted_risk"].unique())
     
     filtered_gdf = filtered_gdf[filtered_gdf["fclass"].isin(fclass_filter) & filtered_gdf["predicted_risk"].isin(risk_filter)]
     
     st.subheader("Filtered Roads Table")
-    # Use 'osmid' or fallback to 'key' if 'osmid' missing
-    id_col = 'osmid' if 'osmid' in filtered_gdf.columns else 'key'
-    display_df = filtered_gdf[[id_col, "fclass", "length_m", "predicted_risk"]].rename(columns={id_col: "osm_id"})
+    # Reset index to make osmid a column (OSMnx uses multi-index u/v/key for edges)
+    filtered_gdf = filtered_gdf.reset_index()
+    # Use 'u' as osm_id (adjust based on columns; use print(filtered_gdf.columns) locally to check)
+    display_df = filtered_gdf[["u", "fclass", "length_m", "predicted_risk"]].rename(columns={"u": "osm_id"})
     st.dataframe(display_df)
     
     # Download
@@ -96,7 +99,8 @@ if not filtered_gdf.empty:
             color = "red" if risk == "High" else "green"
             return {"color": color, "weight": 2}
         
-        folium.GeoJson(filtered_gdf.to_json(), style_function=style_function, tooltip=folium.GeoJsonTooltip(fields=["fclass", "predicted_risk", "length_m"])).add_to(m)
+        folium.GeoJson(filtered_gdf.to_json(), style_function=style_function, tooltip=folium.GeoJsonTooltip(fields=["fclass", "predicted_risk", 
+"length_m"])).add_to(m)
         
         st_folium(m, width=700, height=500)
 
