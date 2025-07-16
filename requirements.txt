@@ -6,3 +6,6 @@ streamlit-folium
 pandas
 numpy
 shapely
+requests
+fpdf2  # Add this line
+earthengine-api  # If using GIS feature
