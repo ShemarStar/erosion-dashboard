@@ -55,8 +55,7 @@ if fetch_data:
         roads_gdf = ox.graph_to_gdfs(graph, nodes=False, edges=True)
         roads_gdf = roads_gdf.to_crs("EPSG:32633")
         roads_gdf["length_m"] = roads_gdf.length
-        # Convert fclass lists to strings for hashability
-        roads_gdf["fclass"] = roads_gdf["fclass"].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+        roads_gdf["fclass"] = roads_gdf["highway"]
 
         water_tags = {"natural": "water", "waterway": True}
         water_gdf = ox.features_from_place(region, tags=water_tags)
@@ -101,12 +100,10 @@ filtered_gdf = st.session_state.filtered_gdf
 
 if not filtered_gdf.empty:
     st.sidebar.header("Filter Options")
-    # Convert fclass to string for multiselect and remove NaN from risks
-    valid_fclass = [', '.join(x) if isinstance(x, list) else x for x in filtered_gdf["fclass"].unique() if pd.notna(x)]
+    # Remove NaN from unique values for multiselect
     valid_risks = [x for x in filtered_gdf["predicted_risk"].unique() if pd.notna(x)]
-    fclass_filter = st.sidebar.multiselect("Road Types", valid_fclass, default=valid_fclass)
+    fclass_filter = st.sidebar.multiselect("Road Types", filtered_gdf["fclass"].unique(), default=filtered_gdf["fclass"].unique())
     risk_filter = st.sidebar.multiselect("Risk Levels", valid_risks, default=valid_risks)
-    # Filter based on stringified fclass
     filtered_gdf = filtered_gdf[filtered_gdf["fclass"].isin(fclass_filter) & filtered_gdf["predicted_risk"].isin(risk_filter)]
 
     if "rusle_a" not in filtered_gdf.columns:
